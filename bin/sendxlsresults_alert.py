@@ -6,14 +6,12 @@
 ##  Dominique Vocat, contributions by Felix Sterzelmaier <felix.sterzelmaier@concat.de>
 ##  Version 1.1.0 - respects default filename just like the send via email alert action if no name is specified.
 ##  Version 1.1.1 - python 2-3 readyness
+##  Version 2.0.0 - Changed to XLSX / removed Python 2 readiness
 ##
 ###############################################################################
 ###############################################################################
 from __future__ import print_function
-import sys
-import os
-import json
-import six.moves.urllib.request, six.moves.urllib.error, six.moves.urllib.parse
+import sys, os, json
 import csv
 import gzip
 import smtplib, email
@@ -30,9 +28,13 @@ from collections import defaultdict
 import logging as logger
 
 import re
-import xlwt
 import copy
 from splunk.util import normalizeBoolean
+
+import urllib
+
+# import xlsxwriter module
+import xlsxwriter
 
 #might fix the error - see https://stackoverflow.com/questions/11536764/how-to-fix-attempted-relative-import-in-non-package-even-with-init-py
 os.sys.path.append(os.path.dirname(os.path.abspath('.')))
@@ -74,9 +76,9 @@ def getarg(argvals, name, defaultVal=None):
 
 def request(method, url, data, headers):
     # Helper function to fetch JSON data from the given URL
-    req = six.moves.urllib.request.Request(url, data, headers)
+    req = urllib.request.Request(url, data, headers)
     req.get_method = lambda: method
-    res = six.moves.urllib.request.urlopen(req)
+    res = urllib.request.urlopen(req)
     return json.loads(res.read())
 
 ###############################################################################
@@ -103,7 +105,7 @@ def getEmailAlertActions(argvals, payload):
 
         try:
             record = request('GET', record_url, None, headers)
-        except six.moves.urllib.error.HTTPError as e:
+        except urllib.error.HTTPError as e:
             logger.error('invocation_id=%s invocation_type="%s" msg="Could not get email alert actions from splunk" error="%s"' % (INVOCATION_ID,INVOCATION_TYPE,str(e)))
             sys.exit(2)
 
@@ -112,7 +114,7 @@ def getEmailAlertActions(argvals, payload):
         argvals['use_ssl'] = record['entry'][0]['content']['use_ssl']
         argvals['use_tls'] = record['entry'][0]['content']['use_tls']
         argvals['reportFileName'] = record['entry'][0]['content']['reportFileName']
-    except six.moves.urllib.error.HTTPError as e:
+    except urllib.error.HTTPError as e:
         logger.error('invocation_id=%s invocation_type="%s" msg="Could not get email alert actions from splunk" error="%s"' % (INVOCATION_ID,INVOCATION_TYPE,str(e)))
         raise
 
@@ -245,8 +247,8 @@ if __name__ == "__main__":
         if filename!="":
             newFilename = filename
 
-        filename = reportFileName.replace("$name$",newFilename)+".xls"
-        regex = ur"\$time:([^$]+)\$"
+        filename = reportFileName.replace("$name$",newFilename)+".xlsx"
+        regex = "\$time:([^$]+)\$"
         match = re.compile(regex).search(filename)
         if(match!=None):
             if(len(match.groups())==1):
@@ -263,10 +265,13 @@ if __name__ == "__main__":
             int_re = re.compile(r'^\d+$')
             float_re = re.compile(r'^\d+\.\d+$')
             date_re = re.compile(r'^\d+-\d+-\d+|^\d+\/\d+\/\d+|^\d+\.\d+\.\d+')
-            style = xlwt.XFStyle()
 
-            workbook = xlwt.Workbook(encoding="UTF-8") #()
+            workbook = xlsxwriter.Workbook(filename) #todo define name
             sheet = workbook.add_sheet(search_name)
+
+            number_format = workbook.add_format({'num_format': '#,##0.00'})
+            general_format = workbook.add_format({'num_format': 'Standard'})
+            date_format = workbook.add_format({'num_format': 'TT.MM.JJJJ'})
 
             column_num = 0
             row_num = 0
@@ -274,28 +279,28 @@ if __name__ == "__main__":
                 column_num = 0
                 for item in row:
                     if not item.startswith('__'):
-                        format = 'general'
+                        format = general_format
                         cellvalue = ""
                         if re.match(date_re, item):
                             cellvalue = item
-                            format = 'M/D/YY'
+                            format = date_format
                         elif re.match(float_re, item):
                             cellvalue = float(item)
-                            format = '0.00'
+                            format = number_format
                         elif re.match(int_re, item):
                             cellvalue = float(item)
-                            format = '0'
+                            format = number_format
                         else:
                             cellvalue = item
                             format = ''
-                        style.num_format_str = format
-                        sheet.write(row_num, column_num, cellvalue, style) #sheet.write(row_num, column_num, unicode(item).encode("utf-8"), style)
+                        #style.num_format_str = format
+                        sheet.write(row_num, column_num, cellvalue, format) 
                         column_num += 1
                 row_num += 1
                 #return True
                 
             #save excel sheet
-            workbook.save(output)
+            workbook.close()
             
             try:
                 sendemail(recipient, sender, subject, bodyText, argvals, filename)
