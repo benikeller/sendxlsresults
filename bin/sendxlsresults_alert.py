@@ -10,15 +10,16 @@
 ##
 ###############################################################################
 ###############################################################################
-from __future__ import print_function
+
 import sys, os, json
 import csv
 import gzip
-import smtplib, email
-from email.MIMEMultipart import MIMEMultipart
+import smtplib
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.MIMEBase import MIMEBase
-from email import Encoders
+from email.mime.base import MIMEBase
+#from email import encoders
+
 
 import socket
 import string
@@ -31,10 +32,10 @@ import re
 import copy
 from splunk.util import normalizeBoolean
 
-import urllib
+import urllib.request 
 
 # import xlsxwriter module
-import xlsxwriter
+from lib import xlsxwriter
 
 #might fix the error - see https://stackoverflow.com/questions/11536764/how-to-fix-attempted-relative-import-in-non-package-even-with-init-py
 os.sys.path.append(os.path.dirname(os.path.abspath('.')))
