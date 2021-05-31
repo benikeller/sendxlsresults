@@ -15,10 +15,10 @@ import sys, os, json
 import csv
 import gzip
 import smtplib, email
-from email.MIMEMultipart import MIMEMultipart
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.MIMEBase import MIMEBase
-from email import Encoders
+from email.mime.base import MIMEBase
+from email import encoders
 
 import socket
 import string
@@ -31,10 +31,10 @@ import re
 import copy
 from splunk.util import normalizeBoolean
 
-import urllib
+import urllib.request 
 
 # import xlsxwriter module
-import xlsxwriter
+from lib import xlsxwriter
 
 #might fix the error - see https://stackoverflow.com/questions/11536764/how-to-fix-attempted-relative-import-in-non-package-even-with-init-py
 os.sys.path.append(os.path.dirname(os.path.abspath('.')))
@@ -267,7 +267,7 @@ if __name__ == "__main__":
             date_re = re.compile(r'^\d+-\d+-\d+|^\d+\/\d+\/\d+|^\d+\.\d+\.\d+')
 
             workbook = xlsxwriter.Workbook(filename) #todo define name
-            sheet = workbook.add_sheet(search_name)
+            sheet = workbook.add_worksheet(search_name)
 
             number_format = workbook.add_format({'num_format': '#,##0.00'})
             general_format = workbook.add_format({'num_format': 'Standard'})
